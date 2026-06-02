@@ -62,9 +62,15 @@ def _require_challenge_creator(challenge_key: str, agent_id: int) -> None:
 
 def register_challenge_routes(app: FastAPI, ctx: RouteContext) -> None:
     @app.get('/api/challenges')
-    async def api_list_challenges(status: str | None = None, limit: int = 50, offset: int = 0):
+    async def api_list_challenges(
+        status: str | None = None,
+        market: str | None = None,
+        track: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ):
         try:
-            return list_challenges(status=status, limit=limit, offset=offset)
+            return list_challenges(status=status, market=market or track, limit=limit, offset=offset)
         except Exception as exc:
             raise _to_http_error(exc)
 

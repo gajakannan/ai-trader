@@ -13,8 +13,10 @@ if str(SERVER_DIR) not in sys.path:
 
 import database
 from challenges import (
+    ChallengeError,
     create_challenge,
     join_challenge,
+    list_challenges,
     record_challenge_trades_for_signal,
     settle_challenge,
     settle_due_challenges,
@@ -130,6 +132,30 @@ class ChallengeTests(unittest.TestCase):
         cursor.execute("SELECT event_type FROM experiment_events ORDER BY id")
         self.assertIn("challenge_created", [row["event_type"] for row in cursor.fetchall()])
         conn.close()
+
+    def test_challenges_are_filtered_by_track(self):
+        self._create_active_challenge(challenge_key="track-crypto", market="crypto", symbol="BTC")
+        self._create_active_challenge(challenge_key="track-stock", market="us-stock", symbol="AAPL")
+        self._create_active_challenge(challenge_key="track-polymarket", market="polymarket", symbol="election-market")
+
+        all_tracks = list_challenges(status="active", market="all")
+        self.assertEqual(all_tracks["total"], 3)
+
+        stock_track = list_challenges(status="active", market="us-stock")
+        self.assertEqual(stock_track["total"], 1)
+        self.assertEqual(stock_track["challenges"][0]["challenge_key"], "track-stock")
+        self.assertEqual(stock_track["challenges"][0]["market"], "us-stock")
+
+        polymarket_track = list_challenges(status="active", market="polymarket")
+        self.assertEqual(polymarket_track["total"], 1)
+        self.assertEqual(polymarket_track["challenges"][0]["challenge_key"], "track-polymarket")
+
+    def test_challenge_track_must_be_supported(self):
+        with self.assertRaises(ChallengeError):
+            self._create_active_challenge(challenge_key="track-forex", market="forex", symbol="EURUSD")
+
+        with self.assertRaises(ChallengeError):
+            list_challenges(status="active", market="forex")
 
     def test_operation_signal_records_challenge_trade_snapshot(self):
         challenge = self._create_active_challenge(challenge_key="trade-mirror")

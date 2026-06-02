@@ -690,6 +690,13 @@ a {
   background: rgba(14, 20, 26, 0.72);
 }
 
+.challenge-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .challenge-tabs button {
   padding: 8px 14px;
   border: 0;

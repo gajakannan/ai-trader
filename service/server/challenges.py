@@ -25,6 +25,7 @@ class ChallengeNotFound(ChallengeError):
 
 DEFAULT_CHALLENGE_REWARDS = {'1': 100, '2': 50, '3': 25}
 SUPPORTED_SCORING_METHODS = {'return-only', 'risk-adjusted'}
+SUPPORTED_CHALLENGE_TRACKS = {'crypto', 'us-stock', 'polymarket'}
 
 
 def _row_dict(row: Any) -> dict[str, Any]:
@@ -98,6 +99,15 @@ def _derive_status(start_at: str, end_at: str, requested_status: Optional[str] =
     return 'active'
 
 
+def _normalize_challenge_track(value: Optional[str], *, allow_all: bool = False) -> Optional[str]:
+    normalized = (value or '').strip().lower().replace('_', '-')
+    if allow_all and (not normalized or normalized == 'all'):
+        return None
+    if normalized not in SUPPORTED_CHALLENGE_TRACKS:
+        raise ChallengeError('Unsupported challenge track')
+    return normalized
+
+
 def _load_challenge(cursor: Any, challenge_key: Optional[str] = None, challenge_id: Optional[int] = None) -> dict[str, Any]:
     if challenge_id is not None:
         cursor.execute("SELECT * FROM challenges WHERE id = ?", (challenge_id,))
@@ -137,9 +147,10 @@ def create_challenge(data: Any, created_by_agent_id: int) -> dict[str, Any]:
     if not title:
         raise ChallengeError('title is required')
 
-    market = (payload.get('market') or '').strip()
-    if not market:
+    raw_market = (payload.get('market') or '').strip()
+    if not raw_market:
         raise ChallengeError('market is required')
+    market = _normalize_challenge_track(raw_market)
 
     scoring_method = (payload.get('scoring_method') or 'return-only').strip().lower().replace('_', '-')
     if scoring_method not in SUPPORTED_SCORING_METHODS:
@@ -215,19 +226,29 @@ def create_challenge(data: Any, created_by_agent_id: int) -> dict[str, Any]:
     return _serialize_challenge(challenge, participant_count=0)
 
 
-def list_challenges(status: Optional[str] = None, limit: int = 50, offset: int = 0) -> dict[str, Any]:
+def list_challenges(
+    status: Optional[str] = None,
+    market: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> dict[str, Any]:
     limit = max(1, min(limit, 200))
     offset = max(0, offset)
+    track = _normalize_challenge_track(market, allow_all=True)
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
         refresh_challenge_statuses(cursor)
         conn.commit()
         params: list[Any] = []
-        where = '1=1'
+        conditions: list[str] = []
         if status:
-            where = 'c.status = ?'
+            conditions.append('c.status = ?')
             params.append(status)
+        if track:
+            conditions.append('c.market = ?')
+            params.append(track)
+        where = ' AND '.join(conditions) if conditions else '1=1'
 
         cursor.execute(f"SELECT COUNT(*) AS total FROM challenges c WHERE {where}", params)
         total = cursor.fetchone()['total']
@@ -880,4 +901,3 @@ def get_challenge_submissions(challenge_key: str, limit: int = 100, offset: int 
         }
     finally:
         conn.close()
-

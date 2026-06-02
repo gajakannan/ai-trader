@@ -9,6 +9,16 @@ type ChallengePageProps = {
 }
 
 const statusValues = ['upcoming', 'active', 'settled'] as const
+type ChallengeTrack = 'all' | 'crypto' | 'us-stock' | 'polymarket'
+
+const challengeTrackValues: Array<{ value: ChallengeTrack, label: string, labelZh: string }> = [
+  { value: 'all', label: 'All Tracks', labelZh: '全部赛道' },
+  { value: 'crypto', label: 'Crypto', labelZh: 'Crypto' },
+  { value: 'us-stock', label: 'US Stock', labelZh: '美股' },
+  { value: 'polymarket', label: 'Polymarket', labelZh: 'Polymarket' },
+]
+
+const creatableChallengeTracks = challengeTrackValues.filter((item) => item.value !== 'all')
 
 function formatPct(value: any) {
   return `${Number(value || 0).toFixed(2)}%`
@@ -31,13 +41,22 @@ function formatDate(value: string | null | undefined, language: string) {
 }
 
 function marketLabel(value: string, language: string) {
+  const track = challengeTrackValues.find((item) => item.value === value)
+  if (track) return track[language === 'zh' ? 'labelZh' : 'label']
   return MARKETS.find((market) => market.value === value)?.[language === 'zh' ? 'labelZh' : 'label'] || value
+}
+
+function defaultSymbolForTrack(value: string) {
+  if (value === 'us-stock') return 'AAPL'
+  if (value === 'polymarket') return ''
+  return 'BTC'
 }
 
 export function ChallengePage({ token, canAdmin = false }: ChallengePageProps) {
   const { challengeKey } = useParams()
   const { language } = useLanguage()
   const [status, setStatus] = useState<'upcoming' | 'active' | 'settled'>('active')
+  const [track, setTrack] = useState<ChallengeTrack>('all')
   const [challenges, setChallenges] = useState<any[]>([])
   const [detail, setDetail] = useState<any | null>(null)
   const [leaderboard, setLeaderboard] = useState<any[]>([])
@@ -81,10 +100,17 @@ export function ChallengePage({ token, canAdmin = false }: ChallengePageProps) {
     }
   }
 
-  const loadList = async () => {
+  const loadList = async (
+    nextStatus: 'upcoming' | 'active' | 'settled' = status,
+    nextTrack: ChallengeTrack = track,
+  ) => {
     setLoading(true)
     try {
-      const res = await fetch(`${API_BASE}/challenges?status=${status}&limit=100`)
+      const params = new URLSearchParams({ status: nextStatus, limit: '100' })
+      if (nextTrack !== 'all') {
+        params.set('market', nextTrack)
+      }
+      const res = await fetch(`${API_BASE}/challenges?${params.toString()}`)
       const data = await res.json()
       if (!res.ok) throw new Error(data.detail || 'challenge_load_failed')
       setChallenges(data.challenges || [])
@@ -133,7 +159,7 @@ export function ChallengePage({ token, canAdmin = false }: ChallengePageProps) {
       loadList()
     }
     loadMyChallenges()
-  }, [challengeKey, status, token])
+  }, [challengeKey, status, track, token])
 
   useEffect(() => {
     if (!canAdmin) {
@@ -186,6 +212,8 @@ export function ChallengePage({ token, canAdmin = false }: ChallengePageProps) {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.detail || 'create_failed')
+      const createdTrack = challengeTrackValues.some((item) => item.value === data.market) ? data.market as ChallengeTrack : 'all'
+      const createdStatus = data.status === 'upcoming' ? 'upcoming' : 'active'
       setCreateForm({
         title: '',
         challenge_key: '',
@@ -197,8 +225,9 @@ export function ChallengePage({ token, canAdmin = false }: ChallengePageProps) {
         end_at: ''
       })
       setShowCreate(false)
-      setStatus(data.status === 'upcoming' ? 'upcoming' : 'active')
-      await loadList()
+      setStatus(createdStatus)
+      setTrack(createdTrack)
+      await loadList(createdStatus, createdTrack)
     } catch (err: any) {
       alert(err?.message || (language === 'zh' ? '创建挑战失败' : 'Failed to create challenge'))
     } finally {
@@ -393,17 +422,31 @@ export function ChallengePage({ token, canAdmin = false }: ChallengePageProps) {
         )}
       </div>
 
-      <div className="challenge-tabs">
-        {statusValues.map((value) => (
-          <button
-            key={value}
-            type="button"
-            className={status === value ? 'active' : ''}
-            onClick={() => setStatus(value)}
-          >
-            {value}
-          </button>
-        ))}
+      <div className="challenge-filter-row">
+        <div className="challenge-tabs">
+          {challengeTrackValues.map((value) => (
+            <button
+              key={value.value}
+              type="button"
+              className={track === value.value ? 'active' : ''}
+              onClick={() => setTrack(value.value)}
+            >
+              {marketLabel(value.value, language)}
+            </button>
+          ))}
+        </div>
+        <div className="challenge-tabs">
+          {statusValues.map((value) => (
+            <button
+              key={value}
+              type="button"
+              className={status === value ? 'active' : ''}
+              onClick={() => setStatus(value)}
+            >
+              {value}
+            </button>
+          ))}
+        </div>
       </div>
 
       {canAdmin && showCreate && (
@@ -425,17 +468,23 @@ export function ChallengePage({ token, canAdmin = false }: ChallengePageProps) {
             <select
               className="form-input"
               value={createForm.market}
-              onChange={(event) => setCreateForm({ ...createForm, market: event.target.value })}
+              onChange={(event) => {
+                const nextTrack = event.target.value
+                setCreateForm({ ...createForm, market: nextTrack, symbol: defaultSymbolForTrack(nextTrack) })
+              }}
             >
-              {MARKETS.filter((market) => market.value !== 'all' && market.supported).map((market) => (
-                <option key={market.value} value={market.value}>{marketLabel(market.value, language)}</option>
+              {creatableChallengeTracks.map((item) => (
+                <option key={item.value} value={item.value}>{marketLabel(item.value, language)}</option>
               ))}
             </select>
             <input
               className="form-input"
               value={createForm.symbol}
-              onChange={(event) => setCreateForm({ ...createForm, symbol: event.target.value.toUpperCase() })}
-              placeholder="BTC"
+              onChange={(event) => setCreateForm({
+                ...createForm,
+                symbol: createForm.market === 'polymarket' ? event.target.value : event.target.value.toUpperCase()
+              })}
+              placeholder={createForm.market === 'polymarket' ? 'market slug' : defaultSymbolForTrack(createForm.market)}
             />
             <select
               className="form-input"
