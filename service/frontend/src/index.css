@@ -643,7 +643,8 @@ a {
 .challenge-list-meta,
 .challenge-section-header,
 .challenge-rule-stack div,
-.challenge-submission-item div {
+.challenge-submission-heading,
+.challenge-vote-row {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -687,7 +688,7 @@ a {
 
 .challenge-metrics-strip {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 12px;
 }
 
@@ -1003,6 +1004,44 @@ a {
   padding: 12px;
 }
 
+.challenge-team-form {
+  margin-bottom: 16px;
+}
+
+.challenge-team-list {
+  display: grid;
+  gap: 10px;
+}
+
+.challenge-team-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background: rgba(18, 27, 34, 0.54);
+}
+
+.challenge-team-row div {
+  display: grid;
+  gap: 4px;
+}
+
+.challenge-team-row strong {
+  color: var(--text-primary);
+}
+
+.challenge-team-row span {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.challenge-team-leaderboard {
+  margin-top: 16px;
+}
+
 .challenge-submit-form {
   display: grid;
   gap: 12px;
@@ -1019,6 +1058,10 @@ a {
   gap: 10px;
 }
 
+.challenge-team-submission-list {
+  margin-top: 12px;
+}
+
 .challenge-submission-item {
   padding: 14px;
   border: 1px solid var(--border-color);
@@ -1026,13 +1069,30 @@ a {
   background: rgba(18, 27, 34, 0.58);
 }
 
-.challenge-submission-item div {
+.challenge-submission-heading {
   justify-content: space-between;
 }
 
 .challenge-submission-item p {
   margin-top: 8px;
   color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.challenge-vote-row {
+  margin-top: 12px;
+}
+
+.challenge-vote-button {
+  min-height: 32px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.challenge-vote-button.active {
+  border-color: rgba(76, 154, 255, 0.6);
+  color: #8cc4ff;
+  background: rgba(76, 154, 255, 0.12);
 }
 
 :root[data-theme='light'] .challenge-hero,
@@ -1044,7 +1104,9 @@ a {
 }
 
 :root[data-theme='light'] .challenge-portfolio-grid div,
-:root[data-theme='light'] .challenge-position-row {
+:root[data-theme='light'] .challenge-position-row,
+:root[data-theme='light'] .challenge-team-row,
+:root[data-theme='light'] .challenge-submission-item {
   background: rgba(232, 223, 207, 0.56);
 }
 

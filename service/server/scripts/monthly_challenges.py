@@ -136,6 +136,7 @@ def build_payload(
     max_position_pct: float,
     max_drawdown_pct: float,
     scoring_method: str,
+    mode: str = "individual",
     experiment_key: str = "",
 ) -> dict[str, Any]:
     month_label = f"{calendar.month_name[start.month]} {start.year}"
@@ -146,6 +147,7 @@ def build_payload(
         "market": track.market,
         "symbol": track.symbol,
         "challenge_type": "monthly-track",
+        "mode": mode,
         "scoring_method": scoring_method,
         "initial_capital": initial_capital,
         "max_position_pct": max_position_pct,
@@ -173,6 +175,7 @@ def ensure_month(
     max_position_pct: float = DEFAULT_MAX_POSITION_PCT,
     max_drawdown_pct: float = DEFAULT_MAX_DRAWDOWN_PCT,
     scoring_method: str = DEFAULT_SCORING_METHOD,
+    mode: str = "individual",
     experiment_key: str = "",
 ) -> list[dict[str, Any]]:
     local_now = now.astimezone(tz)
@@ -195,6 +198,7 @@ def ensure_month(
             max_position_pct=max_position_pct,
             max_drawdown_pct=max_drawdown_pct,
             scoring_method=scoring_method,
+            mode=mode,
             experiment_key=experiment_key,
         )
         if dry_run:
@@ -224,6 +228,7 @@ def run_once(args: argparse.Namespace) -> list[dict[str, Any]]:
         max_position_pct=args.max_position_pct,
         max_drawdown_pct=args.max_drawdown_pct,
         scoring_method=args.scoring_method,
+        mode=args.mode,
         experiment_key=args.experiment_key,
     )
 
@@ -263,6 +268,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-position-pct", type=float, default=float(os.getenv("MONTHLY_CHALLENGE_MAX_POSITION_PCT", DEFAULT_MAX_POSITION_PCT)))
     parser.add_argument("--max-drawdown-pct", type=float, default=float(os.getenv("MONTHLY_CHALLENGE_MAX_DRAWDOWN_PCT", DEFAULT_MAX_DRAWDOWN_PCT)))
     parser.add_argument("--scoring-method", default=os.getenv("MONTHLY_CHALLENGE_SCORING_METHOD", DEFAULT_SCORING_METHOD))
+    parser.add_argument("--mode", default=os.getenv("MONTHLY_CHALLENGE_MODE", "individual"))
     parser.add_argument("--experiment-key", default=os.getenv("MONTHLY_CHALLENGE_EXPERIMENT_KEY", ""))
     parser.add_argument("--retry-seconds", type=int, default=int(os.getenv("MONTHLY_CHALLENGE_RETRY_SECONDS", "3600")))
     parser.add_argument(
